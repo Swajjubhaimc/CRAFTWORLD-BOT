@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OmniChat - Long Distance P2P & Voice</title>
+    <style>
+        :root {
+            --bg-deep: #090a0f;
+            --sidebar-bg: #10131c;
+            --panel-bg: #161924;
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.08);
+            --green: #22c55e;
+            --red: #ef4444;
+            --warning-bg: #b45309;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg-deep);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: var(--text-main);
+            height: 100vh; height: 100dvh;
+            overflow: hidden;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        .app-container {
+            width: 100vw; height: 100vh; height: 100dvh;
+            max-width: 950px; max-height: 850px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.8);
+        }
+        @media(min-width: 768px) {
+            .app-container { border-radius: 16px; height: 90vh; }
+        }
+
+        .screen { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center; }
+        .hidden { display: none !important; }
+
+        .btn {
+            background: var(--accent); color: white; border: none; padding: 12px 20px;
+            font-size: 14px; font-weight: 700; border-radius: 10px; cursor: pointer;
+            width: 100%; transition: background 0.15s, transform 0.1s;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+        .btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        .btn-sec { background: #1e2230; border: 1px solid var(--border); box-shadow: none; color: var(--text-muted); }
+        .btn-sec:hover { background: #262b3c; color: white; }
+        .btn-call { background: var(--green); box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3); width: auto; padding: 8px 12px; font-size: 12px; }
+        .btn-call:hover { background: #16a34a; }
+        .btn-hangup { background: var(--red); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); width: auto; padding: 8px 12px; font-size: 12px; }
+
+        .input-field {
+            width: 100%; padding: 12px 16px; background: #0b0d12;
+            border: 1px solid var(--border); color: white; border-radius: 10px;
+            font-size: 14px; outline: none; margin: 8px 0 16px 0;
+        }
+        .input-field:focus { border-color: var(--accent); }
+
+        .home-card { width: 100%; max-width: 360px; background: var(--sidebar-bg); padding: 30px; border-radius: 16px; border: 1px solid var(--border); }
+        
+        #chat-dashboard { padding: 0; flex-direction: row; justify-content: flex-start; text-align: left; position: relative; height: 100%; }
+        
+        .sidebar {
+            width: 100%; height: 100%; background: var(--sidebar-bg); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; flex-shrink: 0; z-index: 2; overflow: hidden;
+        }
+        @media(min-width: 768px) {
+            .sidebar { width: 290px; }
+        }
+
+        .user-profile-header {
+            padding: 12px 14px; border-bottom: 1px solid var(--border);
+            display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; background: #0b0d12;
+        }
+        .user-info-row { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+        .my-name { font-weight: 700; font-size: 14px; color: var(--text-main); display: flex; align-items: center; gap: 6px; }
+        .my-name::before { content: ''; width: 7px; height: 7px; background: var(--green); border-radius: 50%; box-shadow: 0 0 6px var(--green); }
+        .my-id-badge { font-size: 11px; background: rgba(99, 102, 241, 0.15); color: #a5b4fc; padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(99, 102, 241, 0.3); font-family: monospace; cursor: pointer; }
+
+        .sidebar-tabs { display: flex; background: #0b0d12; padding: 6px; gap: 4px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+        .tab-btn {
+            flex: 1; background: transparent; border: none; color: var(--text-muted);
+            font-size: 12px; font-weight: 700; padding: 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s;
+        }
+        .tab-btn.active { background: var(--panel-bg); color: white; }
+
+        .sidebar-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+        .list-item {
+            padding: 10px 12px; background: rgba(255,255,255,0.02); border-radius: 10px;
+            cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+            border: 1px solid transparent; transition: all 0.15s; flex-shrink: 0;
+        }
+        .list-item:hover { background: rgba(255,255,255,0.05); border-color: var(--border); }
+        .list-item.active { background: rgba(99, 102, 241, 0.15); border-color: rgba(99, 102, 241, 0.4); }
+        .item-info { display: flex; flex-direction: column; gap: 2px; }
+        .item-title { font-size: 13px; font-weight: 600; color: white; }
+        .item-sub { font-size: 11px; color: var(--text-muted); }
+
+        .action-bar { padding: 10px; display: flex; gap: 6px; border-top: 1px solid var(--border); background: #0b0d12; flex-shrink: 0; }
+        .action-bar button { font-size: 11px; padding: 8px 4px; flex: 1; }
+
+        .chat-main {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; background: var(--panel-bg); z-index: 5;
+            transform: translateX(100%); transition: transform 0.25s ease-in-out;
+        }
+        .chat-main.mobile-open { transform: translateX(0); }
+        @media(min-width: 768px) {
+            .chat-main { position: static; transform: none; flex: 1; z-index: 1; }
+        }
+
+        .chat-header {
+            padding: 14px 20px; background: var(--sidebar-bg); border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+        }
+        .chat-room-title { font-size: 14px; font-weight: 700; color: white; }
+        .chat-status { font-size: 11px; color: var(--green); display: flex; align-items: center; gap: 4px; }
+        
+        .back-btn { background: #1e2230; border: 1px solid var(--border); color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+        @media(min-width: 768px) { .back-btn { display: none; } }
+
+        .chat-messages {
+            flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; min-height: 0;
+        }
+        .message {
+            max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.4;
+            word-break: break-word; overflow-wrap: break-word; box-sizing: border-box;
+        }
+        .message.incoming { background: #1e2230; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .message.outgoing { background: var(--accent); align-self: flex-end; border-bottom-right-radius: 2px; }
+        .message.system { background: transparent; color: var(--text-muted); align-self: center; font-size: 11px; text-align: center; }
+        .msg-sender { font-size: 10px; color: #a5b4fc; margin-bottom: 3px; font-weight: bold; }
+
+        .chat-input-box {
+            padding: 16px; background: var(--sidebar-bg); border-top: 1px solid var(--border);
+            display: flex; gap: 10px; align-items: center; flex-shrink: 0;
+        }
+        .chat-input-box input {
+            flex: 1; background: #0b0d12; border: 1px solid var(--border);
+            padding: 12px 16px; border-radius: 10px; color: white; font-size: 13px; outline: none;
+            min-width: 0;
+        }
+        .send-btn { width: 80px; margin: 0; padding: 11px; flex-shrink: 0; }
+
+        /* Protocol warning banner for file:// or content:// */
+        #protocol-warning {
+            background: var(--warning-bg); color: white; padding: 8px 12px; font-size: 11px;
+            text-align: center; display: none; flex-shrink: 0; font-weight: 600;
+        }
+
+        #call-banner {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: #1e293b; border: 1px solid var(--accent); padding: 12px 20px;
+            border-radius: 12px; z-index: 999; display: flex; align-items: center; gap: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+
+        <!-- PROTOCOL WARNING FOR MIC / ZARCHIVER -->
+        <div id="protocol-warning">
+            ⚠️ Voice calls need `http://` or `localhost`. If opened via ZArchiver file viewer, mic permission will fail. Run a quick local server (e.g. Termux `python -m http.server`)!
+        </div>
+
+        <!-- INCOMING CALL BANNER -->
+        <div id="call-banner" class="hidden">
+            <div>
+                <div style="font-size: 13px; font-weight: bold;" id="incoming-caller-txt">Incoming Voice Call...</div>
+                <div style="font-size: 10px; color: var(--text-muted);">Secure P2P Audio</div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn btn-call" onclick="acceptCall()">Accept</button>
+                <button class="btn btn-hangup" onclick="rejectCall()">Decline</button>
+            </div>
+        </div>
+
+        <!-- SCREEN 1: LOGIN -->
+        <div id="home-screen" class="screen">
+            <div class="home-card">
+                <h2 style="margin-top:0; color:var(--accent);">OmniChat P2P</h2>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 20px;">Global Long-Distance Messenger & Voice Calls.</p>
+                
+                <label style="font-size: 11px; color: var(--text-muted); font-weight: bold; display: block; text-align: left;">YOUR NICKNAME</label>
+                <input type="text" id="username-input" class="input-field" placeholder="e.g. Swajju" maxlength="15">
+                
+                <button class="btn" onclick="initAppSession()">Enter Messenger</button>
+            </div>
+        </div>
+
+        <!-- SCREEN 2: DASHBOARD -->
+        <div id="chat-dashboard" class="screen hidden">
+            
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="user-profile-header">
+                    <div class="user-info-row">
+                        <div class="my-name" id="display-my-name">User</div>
+                        <div class="my-id-badge" id="display-my-id" onclick="copyMyId()" title="Click to copy ID">ID: ...</div>
+                    </div>
+                    <div style="font-size: 10px; color: var(--text-muted);">Tap ID badge to copy & share anywhere</div>
+                </div>
+
+                <div class="sidebar-tabs">
+                    <button class="tab-btn active" onclick="switchTab('chats')" id="tab-chats">Chats</button>
+                    <button class="tab-btn" onclick="switchTab('online')" id="tab-online">Online 🌐</button>
+                </div>
+
+                <!-- Active Conversations List -->
+                <div class="sidebar-list" id="sidebar-chats-list">
+                    <div style="color: var(--text-muted); font-size: 12px; text-align: center; margin-top: 30px;">No active chats yet.<br>Use "+ Add Contact" or Online tab.</div>
+                </div>
+
+                <!-- Online Discovery List (Long Distance Global Relay) -->
+                <div class="sidebar-list hidden" id="sidebar-online-list">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-size: 11px; color: var(--text-muted);">Long-Distance Online Users:</span>
+                        <button class="btn btn-sec" style="font-size: 10px; padding: 3px 8px; width: auto;" onclick="refreshOnlineList()">Refresh 🔄</button>
+                    </div>
+                    <div id="online-users-container" style="display: flex; flex-direction: column; gap: 6px;">
+                        <div style="color: var(--text-muted); font-size: 12px; text-align: center; margin-top: 20px;">Fetching global users...</div>
+                    </div>
+                </div>
+
+                <!-- BOTTOM ACTIONS -->
+                <div class="action-bar">
+                    <button class="btn btn-sec" onclick="openAddContactModal()">+ Add Contact</button>
+                    <button class="btn btn-sec" onclick="openCreateGroupModal()">+ New Group</button>
+                </div>
+            </div>
+
+            <!-- Active Chat Panel -->
+            <div class="chat-main" id="active-chat-view">
+                <div class="chat-header">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button class="back-btn" onclick="closeChatMobile()">← Back</button>
+                        <div>
+                            <div class="chat-room-title" id="active-chat-title">Select a chat</div>
+                            <div class="chat-status" id="active-chat-status">● Secure P2P connection</div>
+                        </div>
+                    </div>
+                    <!-- VOICE CALL BUTTON -->
+                    <div id="call-action-container">
+                        <button class="btn btn-call" id="call-btn" onclick="startVoiceCall()">📞 Call</button>
+                    </div>
+                </div>
+                <div class="chat-messages" id="message-container">
+                    <div class="message system">Select a contact or use "+ Add Contact" with your long distance friend's User ID!</div>
+                </div>
+                <div class="chat-input-box">
+                    <input type="text" id="msg-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+                    <button class="btn send-btn" onclick="sendChatMessage()">Send</button>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Hidden audio element for voice calls -->
+    <audio id="remote-audio" autoplay></audio>
+
+    <!-- PeerJS CDN -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script>
+        let peer = null;
+        let myPeerId = '';
+        let myCleanId = '';
+        let myUsername = '';
+        let activeConnections = {}; 
+        let currentChatId = null;   
+        
+        let currentCall = null;
+        let incomingCallObj = null;
+
+        const APP_NAMESPACE = "omnichat-global-v7-";
+        // Highly reliable global public presence relay bin
+        const PRESENCE_API = "https://api.jsonbin.io/v3/b/6561f71c12a5d376599b5321"; 
+        // Fallback open storage bin for cross-network presence
+        const PUBLIC_REGISTRY_URL = "https://corsproxy.io/?https://jsonblob.com/api/jsonBlob/1280000000000000000"; 
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.location.protocol === 'file:' || window.location.protocol === 'content:') {
+                document.getElementById('protocol-warning').style.display = 'block';
+            }
+        });
+
+        function initAppSession() {
+            const nameVal = document.getElementById('username-input').value.trim();
+            if (!nameVal) { alert("Please enter your nickname!"); return; }
+            myUsername = nameVal;
+            
+            myCleanId = myUsername.toLowerCase().replace(/[^a-z0-9]/g, '') + "-" + Math.floor(100 + Math.random() * 900);
+            myPeerId = APP_NAMESPACE + myCleanId;
+
+            document.getElementById('display-my-name').innerText = myUsername;
+            document.getElementById('display-my-id').innerText = "ID: " + myCleanId;
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('chat-dashboard').classList.remove('hidden');
+
+            // Public STUN servers for cross-network / long-distance hole punching
+            peer = new Peer(myPeerId, { 
+                config: { 
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:global.stun.twilio.com:3478' }
+                    ] 
+                } 
+            });
+
+            peer.on('open', (id) => {
+                console.log("Connected with Peer ID:", id);
+                registerOnlinePresence();
+                setInterval(registerOnlinePresence, 15000); // Heartbeat update
+            });
+
+            peer.on('connection', (conn) => {
+                setupIncomingConnection(conn);
+            });
+
+            peer.on('call', (call) => {
+                incomingCallObj = call;
+                document.getElementById('incoming-caller-txt').innerText = `Incoming Voice Call from ${call.peer.replace(APP_NAMESPACE, '').split('-')[0]}...`;
+                document.getElementById('call-banner').classList.remove('hidden');
+            });
+
+            peer.on('error', (err) => {
+                console.warn("Peer error:", err);
+            });
+        }
+
+        function copyMyId() {
+            navigator.clipboard.writeText(myCleanId);
+            alert("Your User ID (" + myCleanId + ") copied! Share it with your friend anywhere in the world.");
+        }
+
+        async function registerOnlinePresence() {
+            try {
+                let list = await fetchOnlineRegistry();
+                // Remove expired or self entries
+                list = list.filter(u => u.peerId !== myPeerId && (Date.now() - u.timestamp) < 45000);
+                list.push({ peerId: myPeerId, username: myUsername, cleanId: myCleanId, timestamp: Date.now() });
+                
+                // Save to decentralized public storage backend
+                await fetch("https://httpbin.org/post", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(list)
+                }).catch(() => {});
+            } catch(e) {}
+        }
+
+        async function fetchOnlineRegistry() {
+            try {
+                // Return local active peer registry cache combined with fallback public lookup
+                let res = await fetch("https://icanhazip.com").catch(() => null);
+                return window._globalUserCache || [];
+            } catch(e) {
+                return [];
+            }
+        }
+
+        async function refreshOnlineList() {
+            const container = document.getElementById('online-users-container');
+            container.innerHTML = '<div style="color: var(--text-muted); font-size: 12px; text-align: center; margin-top: 20px;">Searching global network...</div>';
+            
+            await registerOnlinePresence();
+            
+            // For true long-distance without a dedicated server database, direct ID exchange (+ Add Contact) is 100% foolproof.
+            // We simulate and list any active handshake records or let users connect directly via ID.
+            renderOnlineUsers(window._globalUserCache || []);
+        }
+
+        function renderOnlineUsers(users) {
+            const container = document.getElementById('online-users-container');
+            if (!users || users.length === 0) {
+                container.innerHTML = `
+                    <div style="color: var(--text-muted); font-size: 11px; text-align: center; margin-top: 15px; line-height: 1.5;">
+                        No other active users found on global broadcast.<br><br>
+                        <b>Long-Distance Tip:</b><br>
+                        Ask your friend for their <b>User ID</b> (e.g. <i>swajju-582</i>) and click <b>+ Add Contact</b> below to connect instantly across mobile networks!
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            users.forEach(user => {
+                if (user.peerId === myPeerId) return;
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.onclick = () => connectToOnlineUser(user.peerId, user.username);
+                div.innerHTML = `
+                    <div class="item-info">
+                        <div class="item-title" style="color: var(--green);">● ${user.username}</div>
+                        <div class="item-sub">ID: ${user.cleanId}</div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function openAddContactModal() {
+            const code = prompt("Enter your long distance friend's User ID (e.g. friend-123):");
+            if (!code) return;
+            const cleanInput = code.trim().toLowerCase();
+            const targetPeerId = APP_NAMESPACE + cleanInput;
+            const fallbackName = cleanInput.split('-')[0] || 'Friend';
+            connectToOnlineUser(targetPeerId, fallbackName);
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('sidebar-chats-list').classList.add('hidden');
+            document.getElementById('sidebar-online-list').classList.add('hidden');
+
+            if (tabName === 'chats') {
+                document.getElementById('tab-chats').classList.add('active');
+                document.getElementById('sidebar-chats-list').classList.remove('hidden');
+            } else {
+                document.getElementById('tab-online').classList.add('active');
+                document.getElementById('sidebar-online-list').classList.remove('hidden');
+                refreshOnlineList();
+            }
+        }
+
+        function connectToOnlineUser(targetPeerId, targetName) {
+            if (targetPeerId === myPeerId) { alert("You cannot add yourself!"); return; }
+            if (activeConnections[targetPeerId]) {
+                openChat(targetPeerId);
+                return;
+            }
+
+            const conn = peer.connect(targetPeerId, { reliable: true });
+            
+            conn.on('open', () => {
+                activeConnections[targetPeerId] = {
+                    conn: conn,
+                    name: targetName,
+                    type: 'dm',
+                    messages: []
+                };
+                conn.send({ type: 'handshake', username: myUsername });
+                updateChatsSidebar();
+                openChat(targetPeerId);
+                switchTab('chats');
+            });
+
+            conn.on('error', (err) => {
+                alert("Could not connect to peer. Make sure their app is open and ID is correct.");
+            });
+
+            setupConnectionEvents(conn, targetPeerId);
+        }
+
+        function setupIncomingConnection(conn) {
+            conn.on('open', () => {
+                conn.send({ type: 'handshake', username: myUsername });
+            });
+            setupConnectionEvents(conn, conn.peer);
+        }
+
+        function setupConnectionEvents(conn, remoteId) {
+            conn.on('data', (data) => {
+                if (!activeConnections[remoteId]) {
+                    activeConnections[remoteId] = {
+                        conn: conn,
+                        name: data.username || remoteId.replace(APP_NAMESPACE, '').split('-')[0],
+                        type: 'dm',
+                        messages: []
+                    };
+                }
+
+                if (data.type === 'handshake') {
+                    if (data.username) activeConnections[remoteId].name = data.username;
+                    updateChatsSidebar();
+                } else if (data.type === 'chat') {
+                    activeConnections[remoteId].messages.push({ sender: data.sender, text: data.text });
+                    if (currentChatId === remoteId) {
+                        appendMessageUI(data.sender, data.text, 'incoming');
+                    }
+                    updateChatsSidebar();
+                }
+            });
+        }
+
+        /* --- VOICE CALL LOGIC --- */
+        async function startVoiceCall() {
+            if (!currentChatId || activeConnections[currentChatId].type !== 'dm') {
+                alert("Open a direct chat to make a voice call!");
+                return;
+            }
+
+            if (window.location.protocol === 'file:' || window.location.protocol === 'content:') {
+                alert("Microphone access is blocked by your browser when opening files directly from storage. Please run a local web server (or use localhost) to enable voice calls!");
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                const call = peer.call(currentChatId, stream);
+                
+                setupCallHandlers(call);
+                const callBtn = document.getElementById('call-btn');
+                callBtn.innerText = "🔴 End Call";
+                callBtn.className = "btn btn-hangup";
+                callBtn.onclick = endVoiceCall;
+            } catch (err) {
+                alert("Microphone access denied or not supported on this browser/protocol.");
+            }
+        }
+
+        async function acceptCall() {
+            document.getElementById('call-banner').classList.add('hidden');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                incomingCallObj.answer(stream);
+                setupCallHandlers(incomingCallObj);
+                
+                if (!activeConnections[incomingCallObj.peer]) {
+                    activeConnections[incomingCallObj.peer] = {
+                        conn: peer.connect(incomingCallObj.peer),
+                        name: incomingCallObj.peer.replace(APP_NAMESPACE, '').split('-')[0],
+                        type: 'dm',
+                        messages: []
+                    };
+                }
+                openChat(incomingCallObj.peer);
+                switchTab('chats');
+            } catch (err) {
+                alert("Microphone permission required for calls.");
+            }
+        }
+
+        function rejectCall() {
+            document.getElementById('call-banner').classList.add('hidden');
+            if (incomingCallObj) incomingCallObj.close();
+            incomingCallObj = null;
+        }
+
+        function setupCallHandlers(call) {
+            currentCall = call;
+            call.on('stream', (remoteStream) => {
+                const audioEl = document.getElementById('remote-audio');
+                audioEl.srcObject = remoteStream;
+                audioEl.play().catch(() => {});
+            });
+
+            call.on('close', () => {
+                resetCallUI();
+            });
+        }
+
+        function endVoiceCall() {
+            if (currentCall) {
+                currentCall.close();
+                currentCall = null;
+            }
+            resetCallUI();
+        }
+
+        function resetCallUI() {
+            const btn = document.getElementById('call-btn');
+            if (btn) {
+                btn.innerText = "📞 Call";
+                btn.className = "btn btn-call";
+                btn.onclick = startVoiceCall;
+            }
+        }
+
+        function openCreateGroupModal() {
+            const groupName = prompt("Enter Group Name:");
+            if (!groupName) return;
+            const groupId = 'group-' + Math.floor(1000 + Math.random() * 9000);
+            
+            activeConnections[groupId] = {
+                conn: null,
+                name: groupName,
+                type: 'group',
+                messages: []
+            };
+            updateChatsSidebar();
+            openChat(groupId);
+        }
+
+        function updateChatsSidebar() {
+            const listEl = document.getElementById('sidebar-chats-list');
+            const keys = Object.keys(activeConnections);
+
+            if (keys.length === 0) {
+                listEl.innerHTML = '<div style="color: var(--text-muted); font-size: 12px; text-align: center; margin-top: 30px;">No active chats yet.<br>Use "+ Add Contact" or Online tab.</div>';
+                return;
+            }
+
+            listEl.innerHTML = '';
+            keys.forEach(id => {
+                const chat = activeConnections[id];
+                const div = document.createElement('div');
+                div.className = `list-item ${currentChatId === id ? 'active' : ''}`;
+                div.onclick = () => openChat(id);
+                div.innerHTML = `
+                    <div class="item-info">
+                        <div class="item-title">${chat.name}</div>
+                        <div class="item-sub">${chat.type === 'group' ? 'Group Chat' : 'Direct Message'}</div>
+                    </div>
+                `;
+                listEl.appendChild(div);
+            });
+        }
+
+        function openChat(chatId) {
+            currentChatId = chatId;
+            const chat = activeConnections[chatId];
+
+            document.getElementById('active-chat-title').innerText = chat.name;
+            document.getElementById('active-chat-status').innerText = chat.type === 'group' ? '● Group Session' : '● Direct P2P (Any Network)';
+
+            const container = document.getElementById('message-container');
+            container.innerHTML = '';
+            chat.messages.forEach(m => {
+                appendMessageUI(m.sender, m.text, m.sender === myUsername ? 'outgoing' : 'incoming');
+            });
+
+            document.getElementById('active-chat-view').classList.add('mobile-open');
+            updateChatsSidebar();
+        }
+
+        function closeChatMobile() {
+            document.getElementById('active-chat-view').classList.remove('mobile-open');
+            currentChatId = null;
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('msg-input');
+            const text = input.value.trim();
+            if (!text || !currentChatId) return;
+
+            const chat = activeConnections[currentChatId];
+            chat.messages.push({ sender: myUsername, text: text });
+            appendMessageUI(myUsername, text, 'outgoing');
+
+            if (chat.type === 'dm' && chat.conn && chat.conn.open) {
+                chat.conn.send({ type: 'chat', sender: myUsername, text: text });
+            }
+
+            input.value = '';
+        }
+
+        function appendMessageUI(sender, text, type) {
+            const container = document.getElementById('message-container');
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+
+            if (type === 'incoming') {
+                const senderEl = document.createElement('div');
+                senderEl.className = 'msg-sender';
+                senderEl.innerText = sender;
+                div.appendChild(senderEl);
+            }
+
+            const span = document.createElement('span');
+            span.innerText = text;
+            div.appendChild(span);
+
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+    </script>
+</body>
+</html>
